@@ -10,8 +10,10 @@ import Html.Events exposing (..)
 
 
 type alias Model =
-    {disponiveis: List Atendente,
-    emAtendimento: List Atendente}
+    {disponiveis: List Atendente
+    ,emAtendimento: List Atendente
+    ,emFinalizacao: Bool
+    ,atendenteFinalizando: Maybe Atendente}
 
 type alias Atendente = String
 
@@ -22,8 +24,10 @@ init =
 
 initialModel : Model
 initialModel = 
-    {disponiveis = ["Pedro", "Joao"]
-    ,emAtendimento = []}
+    {disponiveis = ["Pedro", "Joao", "Carlos", "Ivan"]
+    ,emAtendimento = []
+    ,emFinalizacao = False
+    ,atendenteFinalizando = Nothing}
 
 ---- UPDATE ----
 
@@ -31,6 +35,11 @@ initialModel =
 type Msg
     = NoOp
     | AtendenteLivre Atendente
+    --Finalizacoes
+    | ComecaFinalizacao
+    | SelecionaFinalizar Atendente
+    | ConfirmaFinalizar
+    | CancelaFinalizacao
 
 
 
@@ -41,6 +50,31 @@ update msg model =
         ( {model | 
             emAtendimento = List.reverse(atendente :: List.reverse(model.emAtendimento))
             ,disponiveis = List.filter (\nome -> nome /= atendente) model.disponiveis}, Cmd.none )
+
+       ComecaFinalizacao ->
+        ( {model | emFinalizacao = True}, Cmd.none )
+       
+       SelecionaFinalizar atendente->
+        ( {model | atendenteFinalizando = Just atendente}, Cmd.none )
+       
+       ConfirmaFinalizar->
+        case model.atendenteFinalizando of
+           Just atendente ->
+            ( {model | disponiveis = atendente :: model.disponiveis
+            , atendenteFinalizando = Nothing
+            ,emAtendimento = List.filter (\nome -> nome /= atendente) model.emAtendimento
+            , emFinalizacao = False}, Cmd.none )
+           Nothing -> 
+            (model, Cmd.none)
+       
+       CancelaFinalizacao->
+        case model.atendenteFinalizando of
+            Just atendente ->
+                ( {model | atendenteFinalizando = Nothing
+                , emFinalizacao = False}, Cmd.none )
+            Nothing ->
+                ({model | emFinalizacao = False}, Cmd.none)
+       
        NoOp ->
         ( model, Cmd.none )
 
@@ -61,8 +95,37 @@ view model =
             text "EM ATENDIMENTO"
             , ul [] (List.map (\name -> li [] [text name]) model.emAtendimento)
         ]
-        , div [] [text ("FINALIZAR")]
+        , div [onClick ComecaFinalizacao] [text ("FINALIZAR")]
+        , viewFinalizar model
+        , viewConfirmaFinalizar model
     ]
+
+viewConfirmaFinalizar : Model -> Html Msg
+viewConfirmaFinalizar model =
+    case model.atendenteFinalizando of
+        Nothing ->
+            text ""
+        Just atendente ->
+            div [] 
+                [
+                    text ("Confirma finalizacao de " ++ atendente)
+                    , p [onClick ConfirmaFinalizar] [text "CONFIRMA"]
+                    , p [onClick CancelaFinalizacao] [text "CANCELA"]
+                ]
+
+
+viewFinalizar : Model -> Html Msg
+viewFinalizar model =
+    case  model.emFinalizacao of
+       True ->
+            div []  [
+                div [] [
+                         ul [] (List.map (\name -> li [onClick (SelecionaFinalizar name)] [text name]) model.emAtendimento)
+                        ]
+            ]
+       False -> 
+            text ""
+
 
 
 ---- PROGRAM ----
